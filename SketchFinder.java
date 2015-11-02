@@ -2,6 +2,12 @@ import java.io.File;
 import java.util.Comparator;
 import java.util.Arrays;
 import java.util.ArrayList;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Created by Law on 10/10/15.
@@ -10,6 +16,7 @@ public class SketchFinder {
 
     private static boolean help = false;
     private static boolean showIno = true;
+    private static boolean isZip = false;
 
     public static void main(String[] args) {
 
@@ -19,12 +26,24 @@ public class SketchFinder {
             System.out
                     .print("usage: sketchFinder [-h --h --help -help] filepath [options] \n"
                             + "options include: \n"
-                            + "   -a:    to show all files \n"); // TODO: Get help
-            // message.
+                            + "   -a:    to show all files \n"); 
             return;
         }
 
-        File f = new File(args[0]);
+        String dirName;
+        File f;
+
+        // if zip file
+        if ( (args[0].length() > 4) && args[0].substring(args[0].length()-4).equals(".zip")){
+            isZip = true;
+            dirName = createZipDirectory(args[0]);
+            f = new File(dirName);
+        } else {
+            dirName = args[0];
+            f = new File(dirName);
+        }
+        System.out.println(dirName + " lol " + f.getName());
+
         ArrayList<String> sketches = new ArrayList<String>();
         ArrayList<Integer> levels = new ArrayList<Integer>();
 
@@ -34,7 +53,12 @@ public class SketchFinder {
             SketchFinder.getAllFiles(f, sketches, levels);
         }
 
-        SketchFinder.sketchesToJSON(sketches, levels, showIno);
+        SketchFinder.sketchesToJSON(sketches, levels);
+
+        // delete directories from zip file
+        if (isZip) {
+            deleteDirectory(f);
+        }
     }
 
     public static void parseArgs(String[] args) {
@@ -53,6 +77,10 @@ public class SketchFinder {
         }
     }
 
+    /**
+     * Populates sketches and levels array with list of valid sketches
+     * and their depths in the directory
+     */
     public static void getSketches(File folder, ArrayList<String> sketches,
                                       ArrayList<Integer> levels) {
         getSketches(folder, sketches, levels, 0);
@@ -87,6 +115,7 @@ public class SketchFinder {
 
             if (!subfolder.isDirectory()) continue;
 
+            // found valid sketch
             if (getNestedSketches(subfolder.getName(), subfolder, sketches, levels, level)) {
                 ifound = true;
             }
@@ -104,12 +133,13 @@ public class SketchFinder {
             return true;
         }
 
-        // not a sketch folder, but maybe a subfolder containing sketches
+        // add sketch to list
         sketches.add(name);
         levels.add(level);
 
         boolean found = getSketches(folder, sketches, levels, level + 1);
 
+        // sketch was invalid
         if (!found) {
             sketches.remove(sketches.size() - 1);
             levels.remove(levels.size() - 1);
@@ -117,6 +147,10 @@ public class SketchFinder {
         return found;
     }
 
+    /**
+     * Finds all files from the directory and populates it in files list.
+     * Also populates levels list with corresponding depth in directory
+     */
     public static void getAllFiles(File directory,
                                     ArrayList<String> files, ArrayList<Integer> levels) {
         getAllFiles(directory, files, levels, 0);
@@ -139,7 +173,12 @@ public class SketchFinder {
         }
     }
 
-    public static void sketchesToJSON(ArrayList<String> sketches, ArrayList<Integer> levels, boolean displayIno) {
+    /**
+     * Displays sketches in JSON format.
+     * Wrapper function that displays first and last sketches
+     * Prints middle sketches by delegating to overloaded method
+     */
+    public static void sketchesToJSON(ArrayList<String> sketches, ArrayList<Integer> levels) {
         if (sketches.size() == 0) {
             return;
         }
@@ -149,12 +188,12 @@ public class SketchFinder {
         output.append(tabToSpaces(1) + "{\"" + sketches.get(0) + "\" : [\n");
 
         // middle sketches
-        sketchesToJSON(output, sketches, levels, 1, displayIno);
+        sketchesToJSON(output, sketches, levels, 1);
 
         // last sketch
         int lastIndex = levels.size() - 1;
 
-        if (displayIno) {
+        if (showIno) {
             output.append(tabToSpaces(levels.get(lastIndex) + 2) + sketches.get(lastIndex) + ".ino\n");
         }
 
@@ -169,8 +208,11 @@ public class SketchFinder {
         System.out.println(output.toString());
     }
 
+    /**
+     * Displays sketches in JSON format.
+     */
     public static void sketchesToJSON(StringBuilder output, ArrayList<String> sketches, ArrayList<Integer> levels,
-                                      int currentIndex, boolean displayIno) {
+                                      int currentIndex) {
         if (currentIndex == sketches.size()) {
             return;
         }
@@ -212,7 +254,7 @@ public class SketchFinder {
         output.append(tabToSpaces(levels.get(currentIndex) + 1) + "{\"" + sketches.get(currentIndex) + "\" : [\n");
 
         // prints out .ino file
-        if (displayIno) {
+        if (showIno) {
             if ((currentIndex != sketches.size() - 1) &&
                     (levels.get(currentIndex) >= levels.get(currentIndex + 1))) {
                 output.append(tabToSpaces(levels.get(currentIndex) + 2) + sketches.get(currentIndex) + ".ino\n");
@@ -220,14 +262,91 @@ public class SketchFinder {
         }
 
         // recurse for next sketch
-        sketchesToJSON(output, sketches, levels, currentIndex + 1, displayIno);
+        sketchesToJSON(output, sketches, levels, currentIndex + 1);
     }
 
+    /**
+     * Converts tabs to spaces and returns as a String
+     */
     private static String tabToSpaces(int n) {
         StringBuilder spaces = new StringBuilder();
         for (int i = 0; i < n * 4; i++) {
             spaces.append(" ");
         }
         return spaces.toString();
+    }
+
+    /**
+     * Creates the file structure of a zip file
+     * Returns name of parent directory in zip file
+     */
+    public static String createZipDirectory(String zipName) {
+        try {
+            // Open the zip file
+            String parentDirName = "";
+            boolean isFirstFile = true;
+
+            ZipFile zipFile = new ZipFile(zipName);
+            Enumeration<?> enu = zipFile.entries();
+            while (enu.hasMoreElements()) {
+                ZipEntry zipEntry = (ZipEntry) enu.nextElement();
+
+                String name = zipEntry.getName();
+                long size = zipEntry.getSize();
+                long compressedSize = zipEntry.getCompressedSize();
+
+                if (isFirstFile) {
+                    parentDirName = name;
+                    isFirstFile = false;
+                }
+
+                // Do we need to create a directory ?
+                File file = new File(name);
+                if (name.endsWith("/")) {
+                    file.mkdirs();
+                    continue;
+                }
+
+                File parent = file.getParentFile();
+                if (parent != null) {
+                    parent.mkdirs();
+                }
+
+                // Extract the file
+                InputStream is = zipFile.getInputStream(zipEntry);
+                FileOutputStream fos = new FileOutputStream(file);
+                byte[] bytes = new byte[1024];
+                int length;
+                while ((length = is.read(bytes)) >= 0) {
+                    fos.write(bytes, 0, length);
+                }
+                is.close();
+                fos.close();
+
+            }
+            zipFile.close();
+            return parentDirName;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    // recursively deletes the directory, used to delete directory created by zipfile
+    public static boolean deleteDirectory(File directory) {
+        if (directory.exists()) {
+            File[] files = directory.listFiles();
+            if (null != files) {
+                for(int i = 0; i < files.length; i++) {
+                    if (files[i].isDirectory()) {
+                        deleteDirectory(files[i]);
+                    }
+                    else {
+                        files[i].delete();
+                    }
+                }
+            }
+        }
+        return directory.delete();
     }
 }
