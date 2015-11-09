@@ -243,21 +243,27 @@ public class SketchFinder {
                 // base level
                 if (levels.get(currentIndex) == 0) {
                     // print closing brackets for previous level
+                    int spaces = levels.get(index) + 1;
                     for (int i = levels.get(index); i > 0; i--) {
-                        output.append(tabToSpaces(levels.get(i) + 1) + "]}\n");
+                        output.append(tabToSpaces(spaces--) + "]}\n");
                     }
 
                     // print last closing bracket for previous level 0 sketch
                     output.append(tabToSpaces(levels.get(currentIndex) + 1) + "]},\n");
                 } else {
                     // print closing brackets for sketches not at base level
-                    while((index > 0) &&
-                            (levels.get(currentIndex) < levels.get(index))) {
-                        output.append(tabToSpaces(levels.get(index) + 1) + "]}\n");
+                    int brackets = levels.get(index);
+                    int spaces = brackets + 1;
+                    // while((index > 0) &&
+                    //         (levels.get(currentIndex) < levels.get(index))) {
+                    while ((levels.get(currentIndex) < levels.get(index)) &&
+                        brackets > levels.get(currentIndex)) {
+                            output.append(tabToSpaces(spaces--) + "]}\n");
+                        brackets--;
                         index--;
                     }
                     // hits same level case and needs to print comma
-                    output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
+                    output.append(tabToSpaces(spaces) + "]},\n");
                 }
             }
         }
@@ -297,23 +303,29 @@ public class SketchFinder {
 
         // last sketch
         int lastIndex = levels.size() - 1;
-        int index = levels.get(lastIndex);
+        int index = levels.get(lastIndex) - 1;
 
-        // check for last level isDirectory / needs bracket or not
-        while((index > 0) &&
-                (levels.get(lastIndex) < levels.get(index)) ) {
-            if (filesList.get(index).isDirectory()) {
-                output.append(tabToSpaces(levels.get(index) + 1) + "]}\n");
-            }
-            index--;
-        }
-
-        if (levels.get(lastIndex) == index) {
-            output.append("\n");
+        // brackets for last file
+        output.append("\n");
+        int i = filesList.get(index).isDirectory() ? levels.get(index) : levels.get(index) - 1;
+        int spaces = i + 1;
+        // print closing brackets for previous level
+        for (; i > 0; i--) {
+            output.append(tabToSpaces(spaces--) + "]}\n");
         }
 
         // print last closing bracket for previous level 0 sketch
-        output.append(tabToSpaces(1) + "]}\n");
+        if (filesList.get(lastIndex).isDirectory()) {
+            i = levels.get(levels.size() - 1);
+            spaces = i + 1;
+            // print closing brackets for previous level
+            for (; i > 0; i--) {
+                output.append(tabToSpaces(spaces--) + "]}\n");
+            }
+        }
+
+        // print last closing bracket for previous level 0 sketch
+        output.append(tabToSpaces(levels.get(lastIndex)) + "]}\n");
 
         output.append("]");
 
@@ -351,35 +363,25 @@ public class SketchFinder {
 
                 // base level
                 if (levels.get(currentIndex) == 0) {
+                    output.append("\n");
+                    int i = filesList.get(index).isDirectory() ? levels.get(index) : levels.get(index) - 1;
+                    int spaces = i + 1;
                     // print closing brackets for previous level
-                    for (int i = levels.get(index); i > 0; i--) {
-                        output.append(tabToSpaces(levels.get(i) + 1) + "\n");
-                    }
-
-                    // previous file was directory
-                    if (filesList.get(currentIndex - 1).isDirectory()) {
-                        int spaceOffset = (levels.get(currentIndex - 1) + 1) * 4;
-                        output.delete(output.length() - spaceOffset, output.length() - 1);
-                        output.append(tabToSpaces(levels.get(currentIndex) + 2) + "]}\n");
+                    for (; i > 0; i--) {
+                        output.append(tabToSpaces(spaces--) + "]}\n");
                     }
 
                     // print last closing bracket for previous level 0 sketch
                     output.append(tabToSpaces(levels.get(currentIndex) + 1) + "]},\n");
                 } else {
-                    if (!filesList.get(currentIndex - 1).isDirectory()) {
-                        index--;
-                        output.append("\n");
-                        // print closing brackets for sketches not at base level
-                        while((index > 0) &&
-                                (levels.get(currentIndex) < levels.get(index)) ) {
-                            if (filesList.get(index).isDirectory()) {
-                                output.append(tabToSpaces(levels.get(index) + 1) + "]}\n");
-                            }
-                            index--;
-                        }
-                        // hits same level case and needs to print comma
-                        output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
+                    output.append("\n");
+                    int brackets = levels.get(index) - 1;
+                    int spaces = brackets + 1;
+                    while (brackets > levels.get(currentIndex)) {
+                        output.append(tabToSpaces(spaces--) + "]}\n");
+                        brackets--;
                     }
+                    output.append(tabToSpaces(spaces) + "]},\n");
                 }
             }
         }
