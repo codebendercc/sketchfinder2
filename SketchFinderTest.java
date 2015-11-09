@@ -1,8 +1,6 @@
 import junit.framework.TestCase;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.PrintStream;
 import java.util.ArrayList;
 
 /**
@@ -10,19 +8,22 @@ import java.util.ArrayList;
  */
 public class SketchFinderTest extends TestCase {
 
-    private final ByteArrayOutputStream redirectedOutputStream = new ByteArrayOutputStream();
-
-    private final PrintStream originalOutputStream = System.out;
-
-    public void redirectOutput() {
-        System.setOut(new PrintStream(redirectedOutputStream));
-    }
-
-    public void releaseOutput() {
-        System.setOut(originalOutputStream);
-    }
-
     public void testSketchesToJSON() throws Exception {
+
+        String expectedOutput0 = "No sketches detected.";
+
+        SketchFinder sf_test0 = new SketchFinder();
+
+        ArrayList<File> files0 = new ArrayList<File>();
+        ArrayList<String> sketches0 = new ArrayList<String>();
+        ArrayList<Integer> levels0 = new ArrayList<Integer>();
+
+
+        String output0 = sf_test0.sketchesToJSON(files0, sketches0, levels0);
+
+        assertEquals(expectedOutput0, output0);
+
+        //////////////////
 
         String expectedOutput1 = "[\n" +
                 "    {\"Test1\" : [\n" +
@@ -38,16 +39,16 @@ public class SketchFinderTest extends TestCase {
         ArrayList<String> sketches1 = new ArrayList<String>();
         ArrayList<Integer> levels1 = new ArrayList<Integer>();
 
-        files1.add(new File("Test2.ino"));
         sketches1.add("Test1");
         sketches1.add("Test2");
         levels1.add(0);
         levels1.add(1);
 
-        String output = sf_test1.sketchesToJSON(files1, sketches1, levels1);
+        String output1 = sf_test1.sketchesToJSON(files1, sketches1, levels1);
 
-        assertEquals(expectedOutput1, output);
+        assertEquals(expectedOutput1, output1);
 
+        //////////////////
 
         String expectedOutput2 = "[\n" +
                 "    {\"Test\" : [\n" +
@@ -71,10 +72,6 @@ public class SketchFinderTest extends TestCase {
         ArrayList<String> sketches2 = new ArrayList<String>();
         ArrayList<Integer> levels2 = new ArrayList<Integer>();
 
-//        files2.add(new File("Alex_Mouse.ino"));
-//        files2.add(new File("Test2.ino"));
-//        files2.add(new File("nope.ino"));
-//        files2.add(new File("yes.ino"));
         sketches2.add("Test");
         sketches2.add("Alex_Mouse");
         sketches2.add("Test2");
