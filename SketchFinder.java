@@ -42,18 +42,27 @@ public class SketchFinder {
             dirName = args[0];
             f = new File(dirName);
         }
-        System.out.println(dirName + " lol " + f.getName());
 
+        ArrayList<File> files = new ArrayList<File>();
         ArrayList<String> sketches = new ArrayList<String>();
         ArrayList<Integer> levels = new ArrayList<Integer>();
+        String output;
 
         if (showIno) {
-            SketchFinder.getSketches(f, sketches, levels);
-        } else {
-            SketchFinder.getAllFiles(f, sketches, levels);
-        }
+            // gets list of sketches
+            SketchFinder.getSketches(f, files, sketches, levels);
 
-        SketchFinder.sketchesToJSON(sketches, levels);
+            // displays sketches in JSON format
+            output = SketchFinder.sketchesToJSON(files, sketches, levels);
+            System.out.println(output);
+        } else {
+            // gets list of all files
+            SketchFinder.getAllFiles(f, files, sketches, levels);
+
+            // displays sketches in JSON format
+            output = SketchFinder.sketchesToJSONAll(files, sketches, levels);
+            System.out.println(output);
+        }
 
         // delete directories from zip file
         if (isZip) {
@@ -81,13 +90,13 @@ public class SketchFinder {
      * Populates sketches and levels array with list of valid sketches
      * and their depths in the directory
      */
-    public static void getSketches(File folder, ArrayList<String> sketches,
-                                      ArrayList<Integer> levels) {
-        getSketches(folder, sketches, levels, 0);
+    public static void getSketches(File folder, ArrayList<File> filesList, 
+                    ArrayList<String> sketches, ArrayList<Integer> levels) {
+        getSketches(folder, filesList, sketches, levels, 0);
     }
 
-    public static boolean getSketches(File folder, ArrayList<String> sketches,
-                                      ArrayList<Integer> levels, int level) {
+    public static boolean getSketches(File folder, ArrayList<File> filesList, 
+            ArrayList<String> sketches, ArrayList<Integer> levels, int level) {
         if (folder == null)
             return false;
 
@@ -116,31 +125,34 @@ public class SketchFinder {
             if (!subfolder.isDirectory()) continue;
 
             // found valid sketch
-            if (getNestedSketches(subfolder.getName(), subfolder, sketches, levels, level)) {
+            if (getNestedSketches(subfolder.getName(), subfolder, filesList, sketches, levels, level)) {
                 ifound = true;
             }
         }
         return ifound;
     }
 
-    public static boolean getNestedSketches(String name, File folder, ArrayList<String> sketches,
-                                             ArrayList<Integer> levels, int level) {
+    public static boolean getNestedSketches(String name, File folder, ArrayList<File> filesList,
+            ArrayList<String> sketches, ArrayList<Integer> levels, int level) {
 
         File entry = new File(folder, name + ".ino");
         if (entry.exists()) {
+            filesList.add(entry);
             sketches.add(name);
             levels.add(level);
             return true;
         }
 
         // add sketch to list
+        filesList.add(entry);
         sketches.add(name);
         levels.add(level);
 
-        boolean found = getSketches(folder, sketches, levels, level + 1);
+        boolean found = getSketches(folder, filesList, sketches, levels, level + 1);
 
         // sketch was invalid
         if (!found) {
+            filesList.remove(filesList.size() - 1);
             sketches.remove(sketches.size() - 1);
             levels.remove(levels.size() - 1);
         }
@@ -151,22 +163,23 @@ public class SketchFinder {
      * Finds all files from the directory and populates it in files list.
      * Also populates levels list with corresponding depth in directory
      */
-    public static void getAllFiles(File directory,
-                                    ArrayList<String> files, ArrayList<Integer> levels) {
-        getAllFiles(directory, files, levels, 0);
+    public static void getAllFiles(File directory, ArrayList<File> filesList,
+                                    ArrayList<String> fileNames, ArrayList<Integer> levels) {
+        getAllFiles(directory, filesList, fileNames, levels, 0);
     }
 
-    public static void getAllFiles(File directory,
-                                    ArrayList<String> files, ArrayList<Integer> levels, int level) {
+    public static void getAllFiles(File directory, ArrayList<File> filesList, 
+                                    ArrayList<String> fileNames, ArrayList<Integer> levels, int level) {
         // get all the files from a directory
         File[] fList = directory.listFiles();
         if (fList != null) {
             for (File file : fList) {
                 if (!file.isHidden()) {
-                    files.add(file.getName());
+                    filesList.add(file);
+                    fileNames.add(file.getName());
                     levels.add(level);
                     if (file.isDirectory()) {
-                        getAllFiles(file, files, levels, level + 1);
+                        getAllFiles(file, filesList, fileNames, levels, level + 1);
                     }
                 }
             }
@@ -178,24 +191,23 @@ public class SketchFinder {
      * Wrapper function that displays first and last sketches
      * Prints middle sketches by delegating to overloaded method
      */
-    public static void sketchesToJSON(ArrayList<String> sketches, ArrayList<Integer> levels) {
+    public static String sketchesToJSON(ArrayList<File> filesList, 
+                    ArrayList<String> sketches, ArrayList<Integer> levels) {
         if (sketches.size() == 0) {
-            return;
+            return "No sketches detected.";
         }
-        StringBuilder output = new StringBuilder("{\n");
+        StringBuilder output = new StringBuilder("[\n");
 
         // first sketch
         output.append(tabToSpaces(1) + "{\"" + sketches.get(0) + "\" : [\n");
 
         // middle sketches
-        sketchesToJSON(output, sketches, levels, 1);
+        sketchesToJSON(output, filesList, sketches, levels, 1);
 
         // last sketch
         int lastIndex = levels.size() - 1;
 
-        if (showIno) {
-            output.append(tabToSpaces(levels.get(lastIndex) + 2) + sketches.get(lastIndex) + ".ino\n");
-        }
+        output.append(tabToSpaces(levels.get(lastIndex) + 2) + "\"" +sketches.get(lastIndex) + ".ino\"\n");
 
         for (int i = levels.get(lastIndex); i > 0; i--) {
             output.append(tabToSpaces(levels.get(i) + 1) + "]}\n");
@@ -203,16 +215,16 @@ public class SketchFinder {
         // print last closing bracket for previous level 0 sketch
         output.append(tabToSpaces(1) + "]}\n");
 
-        output.append("}");
+        output.append("]");
 
-        System.out.println(output.toString());
+        return output.toString();
     }
 
     /**
      * Displays sketches in JSON format.
      */
-    public static void sketchesToJSON(StringBuilder output, ArrayList<String> sketches, ArrayList<Integer> levels,
-                                      int currentIndex) {
+    public static void sketchesToJSON(StringBuilder output, ArrayList<File> filesList,
+                ArrayList<String> sketches, ArrayList<Integer> levels, int currentIndex) {
         if (currentIndex == sketches.size()) {
             return;
         }
@@ -254,15 +266,134 @@ public class SketchFinder {
         output.append(tabToSpaces(levels.get(currentIndex) + 1) + "{\"" + sketches.get(currentIndex) + "\" : [\n");
 
         // prints out .ino file
-        if (showIno) {
-            if ((currentIndex != sketches.size() - 1) &&
-                    (levels.get(currentIndex) >= levels.get(currentIndex + 1))) {
-                output.append(tabToSpaces(levels.get(currentIndex) + 2) + sketches.get(currentIndex) + ".ino\n");
-            }
+        if ((currentIndex != sketches.size() - 1) &&
+                (levels.get(currentIndex) >= levels.get(currentIndex + 1))) {
+            output.append(tabToSpaces(levels.get(currentIndex) + 2) + "\"" + sketches.get(currentIndex) + ".ino\"\n");
         }
 
         // recurse for next sketch
-        sketchesToJSON(output, sketches, levels, currentIndex + 1);
+        sketchesToJSON(output, filesList, sketches, levels, currentIndex + 1);
+    }
+
+    /**
+     * Used to print all files
+     */
+    public static String sketchesToJSONAll(ArrayList<File> filesList, 
+                    ArrayList<String> sketches, ArrayList<Integer> levels) {
+        if (sketches.size() == 0) {
+            return "No files detected.";
+        }
+        StringBuilder output = new StringBuilder("[\n");
+
+        // first sketch
+        if (filesList.get(0).isDirectory()) {
+            output.append(tabToSpaces(1) + "{\"" + sketches.get(0) + "\" : [\n");
+        } else {
+            output.append(tabToSpaces(1) + "\"" + sketches.get(0) + "\"");
+        }
+
+        // middle sketches
+        sketchesToJSONAll(output, filesList, sketches, levels, 1);
+
+        // last sketch
+        int lastIndex = levels.size() - 1;
+        int index = levels.get(lastIndex);
+
+        // check for last level isDirectory / needs bracket or not
+        while((index > 0) &&
+                (levels.get(lastIndex) < levels.get(index)) ) {
+            if (filesList.get(index).isDirectory()) {
+                output.append(tabToSpaces(levels.get(index) + 1) + "]}\n");
+            }
+            index--;
+        }
+
+        if (levels.get(lastIndex) == index) {
+            output.append("\n");
+        }
+
+        // print last closing bracket for previous level 0 sketch
+        output.append(tabToSpaces(1) + "]}\n");
+
+        output.append("]");
+
+        return output.toString();
+    }
+
+    /**
+     * Used to print all files
+     */
+    public static void sketchesToJSONAll(StringBuilder output, ArrayList<File> filesList,
+                ArrayList<String> sketches, ArrayList<Integer> levels, int currentIndex) {
+        if (currentIndex == sketches.size()) {
+            return;
+        }
+
+        // checks if done recursing into a sketch path by checking the depth
+        if (levels.get(currentIndex) <= levels.get(currentIndex - 1)) {
+            int index = currentIndex - 1;
+
+            // previous sketch has the same depth
+            if (levels.get(currentIndex).intValue() == levels.get(index).intValue()) {
+                // is directory
+                if (filesList.get(currentIndex).isDirectory()) {
+                    if (filesList.get(currentIndex - 1).isDirectory()) {
+                        output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
+                    } else {
+                        output.append(tabToSpaces(levels.get(index) + 1) + "\n");
+                    }
+                } else {
+                    output.append(",\n");
+                }
+
+            // previous sketch does not have the same depth
+            } else {
+
+                // base level
+                if (levels.get(currentIndex) == 0) {
+                    // print closing brackets for previous level
+                    for (int i = levels.get(index); i > 0; i--) {
+                        output.append(tabToSpaces(levels.get(i) + 1) + "\n");
+                    }
+
+                    // previous file was directory
+                    if (filesList.get(currentIndex - 1).isDirectory()) {
+                        int spaceOffset = (levels.get(currentIndex - 1) + 1) * 4;
+                        output.delete(output.length() - spaceOffset, output.length() - 1);
+                        output.append(tabToSpaces(levels.get(currentIndex) + 2) + "]}\n");
+                    }
+
+                    // print last closing bracket for previous level 0 sketch
+                    output.append(tabToSpaces(levels.get(currentIndex) + 1) + "]},\n");
+                } else {
+                    if (!filesList.get(currentIndex - 1).isDirectory()) {
+                        index--;
+                        output.append("\n");
+                        // print closing brackets for sketches not at base level
+                        while((index > 0) &&
+                                (levels.get(currentIndex) < levels.get(index)) ) {
+                            if (filesList.get(index).isDirectory()) {
+                                output.append(tabToSpaces(levels.get(index) + 1) + "]}\n");
+                            }
+                            index--;
+                        }
+                        // hits same level case and needs to print comma
+                        output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
+                    }
+                }
+            }
+        }
+
+        if (filesList.get(currentIndex).isDirectory()) {
+            // prints out current folder name
+            output.append(tabToSpaces(levels.get(currentIndex) + 1) + "{\"" + sketches.get(currentIndex) + "\" : [\n");
+        } else {
+            // prints out current file name
+            output.append(tabToSpaces(levels.get(currentIndex) + 1) + "\"" + sketches.get(currentIndex) + "\"");
+        }
+
+        // recurse for next sketch
+        sketchesToJSONAll(output, filesList, sketches, levels, currentIndex + 1);
     }
 
     /**
