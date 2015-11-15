@@ -210,7 +210,7 @@ public class SketchFinder {
         output.append(tabToSpaces(levels.get(lastIndex) + 2) + "\"" +sketches.get(lastIndex) + ".ino\"\n");
 
         for (int i = levels.get(lastIndex); i > 0; i--) {
-            output.append(tabToSpaces(levels.get(i) + 1) + "]}\n");
+            output.append(tabToSpaces(i + 1) + "]}\n");
         }
         // print last closing bracket for previous level 0 sketch
         output.append(tabToSpaces(1) + "]}\n");
@@ -229,43 +229,28 @@ public class SketchFinder {
             return;
         }
 
-        // checks if done recursing into a sketch path by checking the depth
-        if (levels.get(currentIndex) <= levels.get(currentIndex - 1)) {
-            int index = currentIndex - 1;
+        int index = currentIndex - 1;
 
-            // previous sketch has the same depth
-            if (levels.get(currentIndex).intValue() == levels.get(index).intValue()) {
-                output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
+        // checks if done recursing into a sketch path by checking the depth and 
+        // previous sketch has the same depth
+        if ((levels.get(currentIndex) <= levels.get(currentIndex - 1)) &&
+            (levels.get(currentIndex).intValue() == levels.get(index).intValue())
+            ) {
 
-                // previous sketch does not have the same depth
-            } else {
+            output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
 
-                // base level
-                if (levels.get(currentIndex) == 0) {
-                    // print closing brackets for previous level
-                    int spaces = levels.get(index) + 1;
-                    for (int i = levels.get(index); i > 0; i--) {
-                        output.append(tabToSpaces(spaces--) + "]}\n");
-                    }
+        // previous sketch does not have the same depth
+        } else if ((levels.get(currentIndex) <= levels.get(currentIndex - 1)) &&
+            (levels.get(currentIndex).intValue() != levels.get(index).intValue())
+            ) {
 
-                    // print last closing bracket for previous level 0 sketch
-                    output.append(tabToSpaces(levels.get(currentIndex) + 1) + "]},\n");
-                } else {
-                    // print closing brackets for sketches not at base level
-                    int brackets = levels.get(index);
-                    int spaces = brackets + 1;
-                    // while((index > 0) &&
-                    //         (levels.get(currentIndex) < levels.get(index))) {
-                    while ((levels.get(currentIndex) < levels.get(index)) &&
-                        brackets > levels.get(currentIndex)) {
-                            output.append(tabToSpaces(spaces--) + "]}\n");
-                        brackets--;
-                        index--;
-                    }
-                    // hits same level case and needs to print comma
-                    output.append(tabToSpaces(spaces) + "]},\n");
-                }
+            int brackets = levels.get(index);
+            int spaces = brackets + 1;
+            while (brackets > levels.get(currentIndex)) {
+                output.append(tabToSpaces(spaces--) + "]}\n");
+                brackets--;
             }
+            output.append(tabToSpaces(spaces) + "]},\n");
         }
 
         // prints out current sketch folder name
@@ -306,7 +291,6 @@ public class SketchFinder {
         int index = levels.get(lastIndex) - 1;
 
         // brackets for last file
-        output.append("\n");
         int i = filesList.get(index).isDirectory() ? levels.get(index) : levels.get(index) - 1;
         int spaces = i + 1;
         // print closing brackets for previous level
@@ -322,6 +306,10 @@ public class SketchFinder {
             for (; i > 0; i--) {
                 output.append(tabToSpaces(spaces--) + "]}\n");
             }
+        }
+
+        if (!filesList.get(lastIndex).isDirectory()) {
+            output.append("\n");
         }
 
         // print last closing bracket for previous level 0 sketch
@@ -341,49 +329,39 @@ public class SketchFinder {
             return;
         }
 
-        // checks if done recursing into a sketch path by checking the depth
-        if (levels.get(currentIndex) <= levels.get(currentIndex - 1)) {
-            int index = currentIndex - 1;
+        int index = currentIndex - 1;
 
-            // previous sketch has the same depth
-            if (levels.get(currentIndex).intValue() == levels.get(index).intValue()) {
-                // is directory
-                if (filesList.get(currentIndex).isDirectory()) {
-                    if (filesList.get(currentIndex - 1).isDirectory()) {
-                        output.append(tabToSpaces(levels.get(index) + 1) + "]},\n");
-                    } else {
-                        output.append(tabToSpaces(levels.get(index) + 1) + "\n");
-                    }
-                } else {
-                    output.append(",\n");
+        // checks if done recursing into a sketch path by checking the depth and 
+        // previous sketch has the same depth
+        if ((levels.get(currentIndex) <= levels.get(currentIndex - 1)) &&
+            (levels.get(currentIndex).intValue() == levels.get(index).intValue())
+            ) {
+
+            // is directory
+            if (filesList.get(currentIndex).isDirectory()) {
+                StringBuilder sb = new StringBuilder(tabToSpaces(levels.get(index) + 1));
+
+                // last file was also directory
+                if (filesList.get(currentIndex - 1).isDirectory()) {
+                    sb.append("]},");
                 }
-
-            // previous sketch does not have the same depth
+                output.append(sb + "\n");
             } else {
-
-                // base level
-                if (levels.get(currentIndex) == 0) {
-                    output.append("\n");
-                    int i = filesList.get(index).isDirectory() ? levels.get(index) : levels.get(index) - 1;
-                    int spaces = i + 1;
-                    // print closing brackets for previous level
-                    for (; i > 0; i--) {
-                        output.append(tabToSpaces(spaces--) + "]}\n");
-                    }
-
-                    // print last closing bracket for previous level 0 sketch
-                    output.append(tabToSpaces(levels.get(currentIndex) + 1) + "]},\n");
-                } else {
-                    output.append("\n");
-                    int brackets = levels.get(index) - 1;
-                    int spaces = brackets + 1;
-                    while (brackets > levels.get(currentIndex)) {
-                        output.append(tabToSpaces(spaces--) + "]}\n");
-                        brackets--;
-                    }
-                    output.append(tabToSpaces(spaces) + "]},\n");
-                }
+                output.append(",\n");
             }
+        } else if ((levels.get(currentIndex) <= levels.get(currentIndex - 1)) &&
+            (levels.get(currentIndex).intValue() != levels.get(index).intValue())
+            ) {
+
+            // prints closing brackets
+            output.append("\n");
+            int brackets = levels.get(index) - 1;
+            int spaces = brackets + 1;
+            while (brackets > levels.get(currentIndex)) {
+                output.append(tabToSpaces(spaces--) + "]}\n");
+                brackets--;
+            }
+            output.append(tabToSpaces(spaces) + "]},\n");
         }
 
         if (filesList.get(currentIndex).isDirectory()) {
@@ -473,8 +451,7 @@ public class SketchFinder {
                 for(int i = 0; i < files.length; i++) {
                     if (files[i].isDirectory()) {
                         deleteDirectory(files[i]);
-                    }
-                    else {
+                    } else {
                         files[i].delete();
                     }
                 }
