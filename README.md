@@ -1,9 +1,13 @@
 # sketchfinder2
+SketchFinder is a java app used in codebender to auto detect the peojects and libraries in an Arduino Sketch folder.
 
 ```
 usage: sketchFinder [-h --h --help -help] filepath [options]
+[Note: Only one option may be used]
 options include:
    -a:    to show all files
+   -l:    to show libraries
+   -c:    to show code files opened up by IDE
 ```
 
 #Vagrantfile Usage
