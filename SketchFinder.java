@@ -341,7 +341,6 @@ public class SketchFinder {
      * @param levels list of corresponding depths of files
      * @param currentIndex current index within sketches list
      */
-     */
     public static void sketchesToJSON(StringBuilder output, ArrayList<File> filesList,
                 ArrayList<String> sketches, ArrayList<Integer> levels, int currentIndex) {
         if (currentIndex == sketches.size()) {
