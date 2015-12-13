@@ -73,7 +73,7 @@ Vagrant.configure(2) do |config|
     sudo apt-get -y install default-jre
     sudo apt-get -y install default-jdk
     sudo apt-get -y install unzip
-    wget "https://github.com/kennylaw/sketchfinder2/archive/master.zip"
+    wget "https://github.com/codebendercc/sketchfinder2/archive/master.zip"
     unzip master.zip
     javac -d /home/vagrant/ sketchfinder2-master/SketchFinder.java
    SHELL
